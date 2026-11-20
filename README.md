@@ -1,8 +1,14 @@
 # Noir Synth Studio
 
-An 80s neo-noir polysynth as a **LUNA Add On**: detuned saw pads, poly brass and bells, an arpeggiator and slow
-filter sweeps, 20 film-score chord progressions with smooth voice leading, and a window of sunlight on water
-that ripples with every note you play.
+A love letter to the sound of cinema: the neon synths of 80s sci-fi noir, the towering brass of the modern
+blockbuster, the cool menace of the classic spy thriller, the warmth of epic fantasy and the bittersweet chords
+of anime film.
+
+**Noir Synth Studio** is an 80s neo-noir polysynth for LUNA, built around 20 film-score chord progressions, each
+paired with a patch made for its mood: rain-slicked city pads and resonant poly brass, epic minor-key brass that
+climbs bar by bar, the wide-eyed wonder of a raised fourth, a spy-thriller line sliding through one dark chord,
+celesta-bright magic, and suspended drones that never resolve. Hold one key and the progression plays in time
+with LUNA, voice-led like a string section, in a window of sunlight on water that ripples with every note.
 
 ![Noir Synth Studio](icon.png)
 
@@ -67,6 +73,9 @@ http://localhost:8790/ against a running LUNA; `npx ua-builder install` links th
 | `vendor/luna.global.js` | the LUNA Builder SDK, bundled |
 
 ## Changes
+
+**1.0.3**
+- New showcase description.
 
 **1.0.2**
 - The Add On now always opens with its output on **Window**. It no longer remembers **LUNA track** or **Both**

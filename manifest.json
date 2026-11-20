@@ -2,9 +2,13 @@
     "package_name": "Noir Synth Studio",
     "id": "com.noirlab.noir_synth_studio",
     "title": "Noir Synth Studio",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "manufacturer": "Noir Lab",
-    "description": "Noir Synth's 80s neo-noir polysynth with chords, 20 film-score progressions, an arpeggiator and slow filter sweeps, in a window of light on water. Plays in its own window or into the selected LUNA track.",
+    "description": [
+        "Noir Synth Studio is a love letter to the sound of cinema: the neon synths of 80s sci-fi noir, the towering brass of the modern blockbuster, the cool menace of the classic spy thriller, the warmth of epic fantasy and the bittersweet chords of anime film.\n\n",
+        "An 80s neo-noir polysynth built around 20 film-score chord progressions, each paired with a patch made for its mood: rain-slicked city pads and resonant poly brass, epic minor-key brass that climbs bar by bar, the wide-eyed wonder of a raised fourth, a spy-thriller line sliding through one dark chord, celesta-bright magic, and suspended drones that never resolve.\n\n",
+        "Hold one key and the progression plays in time with LUNA, voice-led like a string section. Or play chords from any key, arpeggiate them, and let the filter sweep slowly through the night. All in one window of sunlight on water that ripples with every note."
+    ],
     "categories": [
         "Create"
     ],
