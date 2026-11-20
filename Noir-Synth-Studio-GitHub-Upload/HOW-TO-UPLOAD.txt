@@ -1,0 +1,28 @@
+Noir Synth Studio 1.0.0: posting it to GitHub for UA Universe
+=============================================================
+
+1. Create the repository
+   - Go to https://github.com/new (signed in to your personal account).
+   - Repository name: noir-synth-studio
+   - Public. Leave "Add a README", .gitignore and licence unticked.
+   - Click "Create repository".
+
+2. Upload the files
+   - On the new, empty repository page, click "uploading an existing file".
+   - Open the folder "1-repository-files", select everything inside it
+     (including the "tests" and "vendor" folders) and drag it onto the page.
+     Optional: in Finder, Cmd+Shift+. shows the hidden .gitignore and .npmrc; drag those too.
+   - Click "Commit changes".
+
+3. Publish the release (this is what LUNA installs)
+   - On the repository page, click "Releases" (right sidebar), then "Create a new release".
+   - Choose a tag: type v1.0.0 and click "Create new tag".
+   - Release title: Noir Synth Studio 1.0.0
+   - Drag "2-release-file/noir-synth-studio.lunaaddon" into "Attach binaries".
+   - Click "Publish release".
+
+4. Paste this into UA Universe (use your GitHub username):
+   https://github.com/YOUR-USERNAME/noir-synth-studio
+
+Updating later: re-pack in ~/luna-add-ons/noir-synth-studio (npx ua-builder pack), then create a
+new release (v1.0.1, ...) with the new .lunaaddon attached. LUNA reads the latest release.

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Noir Synth Studio</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bgTop: #141517; --bgBottom: #0c0d0f; --panel: #191a1d; --line: #2b2c30; --ring: #2e2f34;
+      --ivory: #e9e3d5; --muted: #8e897d; --brass: #c9a96b;
+      --serif: Didot, "Bodoni 72", "Times New Roman", serif;
+      --sans: "Avenir Next", Avenir, -apple-system, Helvetica, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; }
+    body { background: linear-gradient(var(--bgTop), var(--bgBottom)); color: var(--ivory); font: 13px var(--sans); user-select: none; -webkit-user-select: none; }
+
+    /* The light on water: a small canvas the browser scales up smoothly, on its own layer. */
+    #light { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; will-change: transform; pointer-events: none; }
+    #app { position: relative; z-index: 1; width: 1040px; height: 616px; margin: 0 auto; }
+
+    .caps { font: 600 10.5px var(--sans); letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+    .brass { color: var(--brass); }
+
+    /* Header */
+    header { position: absolute; left: 24px; right: 24px; top: 0; height: 76px; border-bottom: 1px solid var(--line); }
+    #wordmark { position: absolute; left: 4px; top: 14px; font: 27px var(--serif); color: var(--ivory); }
+    #maker { position: absolute; left: 6px; top: 47px; font-size: 8.5px; }
+    #status { position: absolute; left: 92px; top: 47px; font: 500 10.5px var(--sans); color: var(--muted); width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #category { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); font-size: 9px; }
+    #presetBar { position: absolute; left: 50%; top: 24px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; }
+    #presetName { font: 25px var(--serif); color: var(--ivory); background: none; border: 0; padding: 4px 12px; width: 320px; cursor: pointer; border-radius: 4px; }
+    #presetName:hover { background: rgba(255,255,255,0.03); }
+    .arrow { width: 30px; height: 30px; background: none; border: 0; color: var(--muted); font: 22px var(--serif); cursor: pointer; }
+    .arrow:hover { color: var(--brass); }
+    #tabs { position: absolute; right: 0; top: 28px; display: flex; }
+    #tabs button { width: 86px; height: 32px; background: none; border: 0; cursor: pointer; position: relative; }
+    #tabs button.on { color: var(--ivory); }
+    #tabs button.on::after { content: ''; position: absolute; left: 50%; bottom: 4px; width: 56%; height: 1.5px; transform: translateX(-50%); background: var(--brass); }
+    #presetMenu { position: absolute; z-index: 10; left: 50%; top: 66px; transform: translateX(-50%); width: 320px; max-height: 520px; overflow: auto;
+                  background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 0; display: none; box-shadow: 0 12px 40px rgba(0,0,0,0.6); }
+    #presetMenu.open { display: block; }
+    #presetMenu .head { padding: 8px 16px 4px; }
+    #presetMenu .item { padding: 6px 16px; font: 14px var(--sans); cursor: pointer; }
+    #presetMenu .item:hover { background: rgba(201,169,107,0.18); }
+    #presetMenu .item.on { color: var(--brass); }
+
+    /* Pages */
+    .page { position: absolute; left: 0; top: 84px; width: 1040px; height: 330px; display: none; }
+    .page.on { display: block; }
+    .ctl { position: absolute; display: flex; flex-direction: column; align-items: center; }
+    .ctl .cap { margin-bottom: 4px; white-space: nowrap; }
+    #sound .cap, #chords .cap { letter-spacing: 0.1em; font-size: 9.5px; }
+    .ctl.knob svg { cursor: ns-resize; touch-action: none; }
+    .ctl .val { font: 500 11.5px var(--sans); color: var(--muted); margin-top: -4px; }
+    .ctl.big .cap { order: 2; margin-top: 4px; }
+    .knob .track { fill: none; stroke: var(--ring); stroke-linecap: round; }
+    .knob .arc { fill: none; stroke: var(--brass); stroke-linecap: round; }
+    .knob .tick { stroke: var(--ivory); stroke-linecap: round; opacity: 0.85; }
+    .knob .disc { fill: url(#disc); }
+    .knob .big-val { font: 15px var(--serif); fill: var(--ivory); text-anchor: middle; dominant-baseline: middle; }
+    select { appearance: none; -webkit-appearance: none; background: transparent; color: var(--ivory); border: 0; border-bottom: 1px solid #3a3b40;
+             font: 500 13.5px var(--sans); padding: 4px 18px 4px 2px; width: 100%; cursor: pointer;
+             background-image: linear-gradient(45deg, transparent 50%, var(--brass) 50%), linear-gradient(135deg, var(--brass) 50%, transparent 50%);
+             background-position: calc(100% - 9px) 55%, calc(100% - 5px) 55%; background-size: 4px 4px; background-repeat: no-repeat; }
+    select:hover { border-bottom-color: var(--brass); }
+    select option { background: var(--panel); color: var(--ivory); }
+    .pill { height: 26px; border-radius: 13px; border: 1px solid #3c3d42; background: transparent; color: var(--muted); cursor: pointer;
+            font: 600 10px var(--sans); letter-spacing: 0.18em; text-transform: uppercase; padding: 0 12px; }
+    .pill:hover { border-color: var(--muted); color: var(--ivory); }
+    .pill.on { background: var(--brass); border-color: var(--brass); color: var(--bgBottom); }
+    .dim { opacity: 0.35; }
+    .section { position: absolute; display: flex; align-items: center; gap: 10px; }
+    .section .rule { flex: 1; height: 1px; background: var(--line); }
+    .divider { position: absolute; width: 1px; background: var(--line); }
+
+    /* Perform info */
+    #info { position: absolute; left: 32px; top: 14px; width: 340px; }
+    #infoCat { font-size: 10px; }
+    #infoName { font: 38px var(--serif); margin: 8px 0 6px; white-space: nowrap; }
+    #infoRoman { font: 500 12px var(--sans); color: var(--muted); letter-spacing: 0.05em; }
+    #infoChords { font: 21px var(--serif); margin: 6px 0 8px; }
+    #infoDesc { font: italic 16px var(--serif); color: var(--muted); line-height: 1.3; }
+    #routing { position: absolute; left: 28px; top: 270px; display: flex; gap: 6px; align-items: center; }
+    .seg { display: inline-flex; border: 1px solid #3c3d42; border-radius: 13px; overflow: hidden; }
+    .seg button { height: 24px; background: none; border: 0; color: var(--muted); font: 600 9.5px var(--sans); letter-spacing: 0.16em; text-transform: uppercase; padding: 0 10px; cursor: pointer; }
+    .seg button.on { background: var(--brass); color: var(--bgBottom); }
+    #hint { position: absolute; left: 676px; top: 186px; width: 340px; font: italic 15px var(--serif); color: var(--muted); line-height: 1.35; }
+    #lunaInfo { position: absolute; left: 32px; top: 304px; width: 360px; font: 500 10.5px var(--sans); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* Tiles and keyboard */
+    #tiles { position: absolute; left: 24px; right: 24px; top: 424px; height: 66px; display: flex; gap: 8px; }
+    .tile { flex: 1; border-radius: 4px; border: 1px solid var(--line); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: linear-gradient(rgba(30,31,35,0.82), rgba(20,21,24,0.88)); }
+    .tile:hover { border-color: rgba(142,137,125,0.7); }
+    .tile.lit { border-color: var(--brass); background: linear-gradient(rgba(60,52,36,0.85), rgba(40,35,26,0.9)); }
+    .tile .n { font-size: 9.5px; }
+    .tile.lit .n { color: var(--brass); }
+    .tile .c { font: 21px var(--serif); color: var(--ivory); margin-top: 2px; }
+    #keys { position: absolute; left: 24px; right: 24px; top: 502px; height: 96px; }
+    .key { position: absolute; top: 0; height: 96px; background: #d9d3c6; border-right: 1px solid #9c968a; cursor: pointer; }
+    .key.black { height: 58px; background: #1b1c1f; z-index: 2; border: 0; border-radius: 0 0 2px 2px; }
+    .key.on { background: var(--brass) !important; }
+    .key.black.on { background: #b39257 !important; }
+    .key span { position: absolute; bottom: 4px; left: 3px; font: 600 9px var(--sans); color: #6d685e; }
+    .key.qw::after { content: ''; position: absolute; left: 30%; right: 30%; bottom: 18px; height: 2px; background: rgba(201,169,107,0.55); }
+  </style>
+</head>
+<body>
+  <canvas id="light" width="208" height="124"></canvas>
+  <svg width="0" height="0" style="position:absolute">
+    <defs>
+      <linearGradient id="disc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#232427"/><stop offset="1" stop-color="#0c0d0f"/></linearGradient>
+    </defs>
+  </svg>
+
+  <div id="app">
+    <header>
+      <div id="wordmark">Noir Synth</div>
+      <div id="maker" class="caps">Noir Lab</div>
+      <div id="status">connecting...</div>
+      <div id="category" class="caps brass"></div>
+      <div id="presetBar">
+        <button class="arrow" id="prev" title="Previous program">&#8249;</button>
+        <button id="presetName" title="Choose a program"></button>
+        <button class="arrow" id="next" title="Next program">&#8250;</button>
+      </div>
+      <div id="tabs">
+        <button class="caps on" data-page="perform">Perform</button><button class="caps" data-page="sound">Sound</button><button class="caps" data-page="chords">Chords</button>
+      </div>
+      <div id="presetMenu"></div>
+    </header>
+
+    <div class="page on" id="perform">
+      <div id="info">
+        <div id="infoCat" class="caps brass"></div>
+        <div id="infoName"></div>
+        <div id="infoRoman"></div>
+        <div id="infoChords"></div>
+        <div id="infoDesc"></div>
+      </div>
+      <div id="routing">
+        <span class="seg" id="output" title="Where the sound plays">
+          <button data-v="window" class="on">Window</button><button data-v="luna">LUNA track</button><button data-v="both">Both</button>
+        </span>
+        <button class="pill" id="lightToggle" title="The moving light behind the controls">Light</button>
+        <button class="pill" id="panic" title="All notes off">Panic</button>
+      </div>
+      <div id="lunaInfo"></div>
+      <div class="divider" style="left:392px; top:18px; height:290px"></div>
+      <div class="divider" style="left:812px; top:18px; height:290px"></div>
+    </div>
+    <div class="page" id="sound"></div>
+    <div class="page" id="chords"><div id="hint">Auto: hold one key and the progression plays in time with LUNA, rooted on that key.
+      Keys: C D E F G A B play chords 1, 2, 3... of the progression in the chosen key. The tiles below always play one chord each.</div></div>
+
+    <div id="tiles"></div>
+    <div id="keys"></div>
+  </div>
+
+  <script src="vendor/luna.global.js"></script>
+  <script src="logic.js"></script>
+  <script src="synth.js"></script>
+  <script src="light.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
