@@ -1,5 +1,5 @@
 // Noir Synth Studio: logic with no DOM and no Web Audio, so the tests exercise it against
-// Luna.MockEngine. A web port of the Noir Synth instrument plug-in (~/luna-add-ons/noir-synth-plugin):
+// Luna.MockEngine. A web port of the Noir Synth instrument plug-in:
 // the same presets, arpeggiator, sweep, chords, 20 film progressions with voice leading, and
 // factory programs, number for number.
 //

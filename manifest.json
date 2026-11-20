@@ -2,7 +2,7 @@
     "package_name": "Noir Synth Studio",
     "id": "com.noirlab.noir_synth_studio",
     "title": "Noir Synth Studio",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "manufacturer": "Noir Lab",
     "description": "Noir Synth's 80s neo-noir polysynth with chords, 20 film-score progressions, an arpeggiator and slow filter sweeps, in a window of light on water. Plays in its own window or into the selected LUNA track.",
     "categories": [

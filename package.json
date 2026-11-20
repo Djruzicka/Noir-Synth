@@ -1,7 +1,7 @@
 {
   "name": "noir_synth_studio",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "description": "Noir Synth Studio, a LUNA Add On built with @uaudio/luna-builder-sdk",
   "scripts": {

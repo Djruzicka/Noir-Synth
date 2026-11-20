@@ -67,19 +67,48 @@ class NoirSynth {
     this.chorusOut.connect(this.reverbSend).connect(this.reverb);
     pp.connect(this.reverb);
 
+    // Compressor: the Noir Synth plug-in's own (an audio worklet, below). The browser's built-in
+    // DynamicsCompressor clamps every note's onset by ~6 dB and lets go over ~100 ms, an audible
+    // swell the plug-in doesn't have. Until the worklet has loaded (and wherever worklets are
+    // unavailable) the built-in one stands in, so notes always play.
+    this.compIn = ctx.createGain();
+    this.chorusOut.connect(this.compIn);
+    pp.connect(this.compIn);
+    this.reverb.connect(this.compIn);
+    this.master.connect(ctx.destination);
     this.comp = ctx.createDynamicsCompressor();
     this.comp.threshold.value = -14;
     this.comp.ratio.value = 3;
-    this.chorusOut.connect(this.comp);
-    pp.connect(this.comp);
-    this.reverb.connect(this.comp);
-    this.comp.connect(this.master).connect(ctx.destination);
+    this.compIn.connect(this.comp).connect(this.master);
+    this.compReady = this.useNoirCompressor();
 
     this.analyser = ctx.createAnalyser();
     this.analyser.fftSize = 1024;
     this.master.connect(this.analyser);
 
     this.apply(this.p);
+  }
+
+  /** Swap the built-in compressor for the plug-in's. Resolves true once it's in the signal path. */
+  async useNoirCompressor() {
+    const ctx = this.ctx;
+    try {
+      if (!ctx.audioWorklet || typeof AudioWorkletNode === 'undefined') return false;
+      const url = URL.createObjectURL(new Blob([NOIR_COMPRESSOR_WORKLET], { type: 'application/javascript' }));
+      await ctx.audioWorklet.addModule(url);
+      URL.revokeObjectURL(url);
+      const node = new AudioWorkletNode(ctx, 'noir-compressor', {
+        numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2], channelCount: 2, channelCountMode: 'explicit',
+      });
+      this.compIn.disconnect();
+      this.comp.disconnect();
+      this.compIn.connect(node).connect(this.master);
+      this.comp = node;
+      return true;
+    } catch (e) {
+      console.warn('Noir Synth: using the built-in compressor', e);
+      return false;
+    }
   }
 
   impulse(seconds, decay) {
@@ -126,13 +155,19 @@ class NoirSynth {
     for (const v of this.voices.values()) this.updateVoiceFilter(v, t);
   }
 
+  /**
+   * The cutoff is the sum of two separate controls, as in the Noir Synth plug-in:
+   *   base (the swept position, in Hz) + envelope shape (0..1) x (peak - base).
+   * The sweep only moves `base` and the envelope's depth, never the envelope itself, so the
+   * 30-a-second sweep updates can no longer cut into a note's filter envelope.
+   */
   updateVoiceFilter(v, t) {
-    const hz = NoirLogic.cutoffHz(this.filterPos);
+    const base = NoirLogic.cutoffHz(this.filterPos);
+    const peak = NoirLogic.cutoffHz(Math.min(1, this.filterPos + v.envAmount));
     const q = 0.7 + this.p.resonance * 14;
-    for (const f of v.filters) {
-      f.frequency.setTargetAtTime(hz, t, 0.03);
-      f.Q.setTargetAtTime(q, t, 0.05);
-    }
+    v.base.offset.setTargetAtTime(base, t, 0.03);
+    v.envDepth.gain.setTargetAtTime(peak - base, t, 0.03);
+    for (const f of v.filters) f.Q.setTargetAtTime(q, t, 0.05);
   }
 
   noteOn(note, velocity = 100, when = 0) {
@@ -173,17 +208,29 @@ class NoirSynth {
     mk(p.wave, 1, p.detune, 0.5);
     if (p.sub > 0) mk('square', 0.5, 0, p.sub * 0.6);
 
-    // Filter envelope rides on top of the swept cutoff.
+    // Filter: cutoff = base (swept) + envelope (0..1) x depth, summed on the filters' frequency.
     const base = NoirLogic.cutoffHz(this.filterPos);
     const peak = NoirLogic.cutoffHz(Math.min(1, this.filterPos + p.envAmount));
     const q = 0.7 + p.resonance * 14;
+    const baseSrc = ctx.createConstantSource();
+    baseSrc.offset.value = base;
+    const env = ctx.createConstantSource();          // the envelope shape, 0..1
+    const envAttack = Math.max(0.005, p.attack);
+    env.offset.setValueAtTime(0, t);
+    env.offset.linearRampToValueAtTime(1, t + envAttack);
+    env.offset.setTargetAtTime(0, t + envAttack, Math.max(0.02, p.decay / 3));
+    const envDepth = ctx.createGain();
+    envDepth.gain.value = peak - base;
+    env.connect(envDepth);
     for (const f of filters) {
       f.Q.value = q;
-      f.frequency.cancelScheduledValues(t);
-      f.frequency.setValueAtTime(base, t);
-      f.frequency.linearRampToValueAtTime(peak, t + Math.max(0.005, p.attack));
-      f.frequency.setTargetAtTime(base, t + p.attack, Math.max(0.02, p.decay / 3));
+      f.frequency.value = 0;                         // driven entirely by the two sources
+      baseSrc.connect(f.frequency);
+      envDepth.connect(f.frequency);
     }
+    baseSrc.start(t);
+    env.start(t);
+    oscs.push(baseSrc, env);                         // stopped with the voice
 
     const vel = 0.35 + 0.65 * (velocity / 127);
     const g = out.gain;
@@ -191,7 +238,7 @@ class NoirSynth {
     g.linearRampToValueAtTime(vel, t + Math.max(0.003, p.attack));
     g.setTargetAtTime(vel * p.sustain, t + p.attack, Math.max(0.02, p.decay / 3));
 
-    const voice = { note, out, oscs, filters };
+    const voice = { note, out, oscs, filters, base: baseSrc, envDepth, envAmount: p.envAmount };
     this.voices.set(note, voice);
     return voice;
   }
@@ -223,5 +270,40 @@ class NoirSynth {
     for (const n of [...this.voices.keys()]) this.noteOff(n);
   }
 }
+
+/**
+ * The Noir Synth plug-in's compressor (NoirEngine.h), sample for sample: stereo-linked peak detector,
+ * threshold -14 dB, ratio 3, 30 dB soft knee, 3 ms attack, 250 ms release, automatic make-up gain.
+ */
+const NOIR_COMPRESSOR_WORKLET = `
+const T = -14, R = 3, W = 30;
+const curve = (x) => (x < T - W / 2 ? x : x > T + W / 2 ? T + (x - T) / R : x + (1 / R - 1) * (x - T + W / 2) ** 2 / (2 * W));
+class NoirCompressor extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    this.gr = 0;
+    this.attack = Math.exp(-1 / (0.003 * sampleRate));
+    this.release = Math.exp(-1 / (0.25 * sampleRate));
+    this.makeup = Math.pow(10, (-0.6 * curve(0)) / 20);
+  }
+  process(inputs, outputs) {
+    const input = inputs[0], output = outputs[0];
+    const n = output[0].length;
+    if (!input || !input.length) { for (const ch of output) ch.fill(0); return true; }
+    const L = input[0], Rin = input[1] || input[0], oL = output[0], oR = output[1] || output[0];
+    for (let i = 0; i < n; i++) {
+      const peak = Math.max(Math.abs(L[i]), Math.abs(Rin[i]));
+      const inDb = peak > 1e-6 ? 20 * Math.log10(peak) : -120;
+      const gr = inDb - curve(inDb);
+      this.gr = gr + (this.gr - gr) * (gr > this.gr ? this.attack : this.release);
+      const g = Math.pow(10, -this.gr / 20) * this.makeup;
+      oL[i] = L[i] * g;
+      oR[i] = Rin[i] * g;
+    }
+    return true;
+  }
+}
+registerProcessor('noir-compressor', NoirCompressor);
+`;
 
 globalThis.NoirSynth = NoirSynth;
