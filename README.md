@@ -68,6 +68,10 @@ http://localhost:8790/ against a running LUNA; `npx ua-builder install` links th
 
 ## Changes
 
+**1.0.2**
+- The Add On now always opens with its output on **Window**. It no longer remembers **LUNA track** or **Both**
+  between sessions, so a forgotten setting can't layer the window synth with whatever is on the selected track.
+
 **1.0.1**
 - Fixed: the filter envelope was being overwritten by the filter sweep, so some patches (Hold The Line, Neon
   Brass and others) swelled and then dropped out while a key was held. Cutoff is now the swept base plus the

@@ -14,7 +14,7 @@ const C = NoirChords;
 let luna;
 let session;
 let lunaOut;
-let output = 'window';        // 'window' | 'luna' | 'both'
+let output = 'window';        // 'window' | 'luna' | 'both'; always opens on 'window' (never restored)
 let program = 0;
 let p = { ...NoirPrograms.patch(0), volume: 0.5, bpm: 92, latch: false };
 const engine = new ChordEngine({ on: (n, v) => press(n, v), off: (n) => unpress(n) });
@@ -730,7 +730,7 @@ function save() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     try {
-      localStorage.setItem(STORE, JSON.stringify({ program, p, chords: engine.settings, output, light: light.enabled }));
+      localStorage.setItem(STORE, JSON.stringify({ program, p, chords: engine.settings, light: light.enabled }));
     } catch (e) { /* storage unavailable: fine */ }
   }, 300);
 }
@@ -742,7 +742,8 @@ function restore() {
     p = { ...NoirPrograms.patch(program), ...s.p, latch: false };
     programDefaults = { ...NoirPrograms.patch(program), volume: p.volume, bpm: p.bpm, latch: false };
     engine.settings = { ...C.DEFAULT_CHORDS, ...s.chords };
-    if (s.output) { output = s.output; for (const o of $('output').querySelectorAll('button')) o.classList.toggle('on', o.dataset.v === output); }
+    // Output is not restored: sending to a LUNA track is chosen fresh each time, so a forgotten
+    // 'LUNA track' or 'Both' can't layer the window synth with whatever is on the selected track.
     if (s.light === false) light.setEnabled(false);
   } catch (e) { /* ignore a bad saved state */ }
 }
